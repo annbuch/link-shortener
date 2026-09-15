@@ -5,10 +5,8 @@ const { authenticate } = require('../middlewares/auth');
 
 router.use(authenticate);
 
-// Общая статистика
 router.get('/overview', analyticsController.getOverview);
 
-// Статистика по конкретной ссылке
 router.get('/links/:id/analytics', analyticsController.getAnalytics);
 router.get('/links/:id/analytics/clicks', analyticsController.getClicksList);
 router.get('/links/:id/analytics/daily', analyticsController.getDaily);

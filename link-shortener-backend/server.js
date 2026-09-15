@@ -15,7 +15,6 @@ const PORT = 3000;
 
 app.use(express.json());
 
-// Маршруты
 app.use('/auth', authRoutes);
 app.use('/users', userRoutes);
 app.use('/links', linkRoutes);
@@ -25,7 +24,7 @@ app.use('/analytics', analyticsRoutes);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
   explorer: true,
   customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: 'LinkHub API Documentation'
+  customSiteTitle: 'Click.me API Documentation'
 }));
 
 app.use('/', redirectRoutes); 

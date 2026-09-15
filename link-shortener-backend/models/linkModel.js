@@ -1,17 +1,31 @@
 let links = [
   {
-    id: '1',
+    id: 1,
+    userId: 1, 
     originalUrl: 'https://example.com',
     shortCode: 'abc123',
+    alias: null,
+    expiresAt: null,
+    password: null,
+    groupId: null,
     clicks: 0,
-    createdAt: new Date().toISOString()
+    isActive: true,
+    createdAt: Date.now(),
+    deletedAt: null
   },
   {
-    id: '2',
+    id: 2,
+    userId: 1,
     originalUrl: 'https://google.com',
     shortCode: 'def456',
+    alias: null,
+    expiresAt: null,
+    password: null,
+    groupId: null,
     clicks: 5,
-    createdAt: new Date().toISOString()
+    isActive: true,
+    createdAt: Date.now(),
+    deletedAt: null
   }
 ];
 let linkIdCounter = 1;

@@ -34,7 +34,7 @@ const options = {
         }
       },
       schemas: {
-        // ---------- ОБЩИЕ СХЕМЫ ----------
+
         ErrorResponse: {
           type: 'object',
           properties: {
@@ -119,7 +119,6 @@ const options = {
           }
         },
 
-        // ---------- ССЫЛКИ ----------
         Link: {
           type: 'object',
           properties: {
@@ -179,7 +178,6 @@ const options = {
           }
         },
 
-        // ---------- ГРУППЫ ----------
         Group: {
           type: 'object',
           properties: {
@@ -220,7 +218,6 @@ const options = {
           ]
         },
 
-        // ---------- АНАЛИТИКА ----------
         AnalyticsSummary: {
           type: 'object',
           properties: {
@@ -313,7 +310,6 @@ const options = {
           }
         },
 
-        // ---------- ПАРОЛЬ ----------
         VerifyPasswordRequest: {
           type: 'object',
           required: ['password'],
@@ -339,7 +335,7 @@ const options = {
       { name: 'Redirect', description: 'Публичные эндпоинты для перехода по ссылкам' }
     ]
   },
-  apis: ['./routes/*.js', './controllers/*.js'] // где искать JSDoc-комментарии
+  apis: ['./routes/*.js', './controllers/*.js'] 
 };
 
 const swaggerSpec = swaggerJsdoc(options);

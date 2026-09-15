@@ -22,7 +22,6 @@ const getByLinkId = (linkId, filters = {}) => {
   return result;
 };
 
-// Агрегации для аналитики
 const getStats = (linkId) => {
   const linkClicks = clicks.filter(c => c.linkId === linkId);
   const total = linkClicks.length;
