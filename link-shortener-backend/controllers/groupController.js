@@ -1,5 +1,4 @@
-const groupModel = require('../models/groupModel');
-const linkModel = require('../models/linkModel');
+const { Group, Link } = require('../models');
 
 // GET /groups
 /**
@@ -22,9 +21,9 @@ const linkModel = require('../models/linkModel');
  *       401:
  *         description: Требуется авторизация
  */
-exports.getAllGroups = (req, res, next) => {
+exports.getAllGroups = async (req, res, next) => {
   try {
-    const groups = groupModel.getAll(req.user.id);
+    const groups = await Group.findAll({ where: { userId: req.user.id } });
     res.json(groups);
   } catch (err) {
     next(err);
@@ -62,18 +61,17 @@ exports.getAllGroups = (req, res, next) => {
  *       401:
  *         description: Требуется авторизация
  */
-exports.createGroup = (req, res, next) => {
+exports.createGroup = async (req, res, next) => {
   try {
     const { name, description } = req.body;
     if (!name) {
       return res.status(400).json({ error: 'Название группы обязательно' });
     }
-    const newGroup = {
+    const group = await Group.create({
       userId: req.user.id,
       name,
       description: description || ''
-    };
-    const group = groupModel.add(newGroup);
+    });
     res.status(201).json(group);
   } catch (err) {
     next(err);
@@ -111,16 +109,15 @@ exports.createGroup = (req, res, next) => {
  *       401:
  *         description: Требуется авторизация
  */
-exports.getGroupById = (req, res, next) => {
+exports.getGroupById = async (req, res, next) => {
   try {
     const id = Number(req.params.id);
-    const group = groupModel.getById(id, req.user.id);
+    const group = await Group.findOne({ where: { id, userId: req.user.id } });
     if (!group) {
       return res.status(404).json({ error: 'Группа не найдена' });
     }
-    // Также получаем ссылки в этой группе
-    const links = linkModel.getAll({ userId: req.user.id, groupId: id });
-    res.json({ ...group, links });
+    const links = await Link.findAll({ where: { userId: req.user.id, groupId: id, deletedAt: null } });
+    res.json({ ...group.toJSON(), links });
   } catch (err) {
     next(err);
   }
@@ -163,15 +160,16 @@ exports.getGroupById = (req, res, next) => {
  *       401:
  *         description: Требуется авторизация
  */
-exports.updateGroup = (req, res, next) => {
+exports.updateGroup = async (req, res, next) => {
   try {
     const id = Number(req.params.id);
     const { name, description } = req.body;
-    const updated = groupModel.update(id, req.user.id, { name, description });
-    if (!updated) {
+    const group = await Group.findOne({ where: { id, userId: req.user.id } });
+    if (!group) {
       return res.status(404).json({ error: 'Группа не найдена' });
     }
-    res.json(updated);
+    await group.update({ name, description });
+    res.json(group);
   } catch (err) {
     next(err);
   }
@@ -204,18 +202,15 @@ exports.updateGroup = (req, res, next) => {
  *       401:
  *         description: Требуется авторизация
  */
-exports.deleteGroup = (req, res, next) => {
+exports.deleteGroup = async (req, res, next) => {
   try {
     const id = Number(req.params.id);
-    const result = groupModel.remove(id, req.user.id);
-    if (!result) {
+    const group = await Group.findOne({ where: { id, userId: req.user.id } });
+    if (!group) {
       return res.status(404).json({ error: 'Группа не найдена' });
     }
- 
-    const links = linkModel.getAll({ userId: req.user.id, groupId: id });
-    for (const link of links) {
-      linkModel.update(link.id, req.user.id, { groupId: null });
-    }
+    await Link.update({ groupId: null }, { where: { userId: req.user.id, groupId: id } });
+    await group.destroy();
     res.status(204).send();
   } catch (err) {
     next(err);

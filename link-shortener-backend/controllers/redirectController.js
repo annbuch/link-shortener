@@ -1,6 +1,4 @@
-const linkModel = require('../models/linkModel');
-const clickModel = require('../models/clickModel');
-const userModel = require('../models/userModel'); // для заглушки геолокации
+const { Link, Click } = require('../models');
 
 // GET /:shortCode - редирект
 /**
@@ -52,18 +50,24 @@ const userModel = require('../models/userModel'); // для заглушки г�
  *               type: string
  *               example: Ссылка деактивирована
  */
-exports.redirect = (req, res, next) => {
+exports.redirect = async (req, res, next) => {
   try {
     const { shortCode } = req.params;
-    const link = linkModel.getByShortCode(shortCode);
+    const link = await Link.findOne({ where: { shortCode } });
     if (!link) {
       return res.status(404).send('Ссылка не найдена');
     }
     if (!link.isActive) {
       return res.status(410).send('Ссылка деактивирована');
     }
+    if (link.deletedAt) {
+      return res.status(404).send('Ссылка не найдена');
+    }
     if (link.expiresAt && Date.now() > link.expiresAt) {
       return res.status(410).send('Срок действия ссылки истек');
+    }
+    if (link.maxClicks && link.clicks >= link.maxClicks) {
+      return res.status(410).send('Лимит переходов исчерпан');
     }
     if (link.password) {
       return res.status(401).json({ error: 'Требуется пароль', shortCode });
@@ -72,15 +76,10 @@ exports.redirect = (req, res, next) => {
     const ip = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('User-Agent');
     const referer = req.get('Referer') || 'direct';
-    const location = { country: 'BY', city: 'Minsk' }; // заглушка
-    clickModel.add({
-      linkId: link.id,
-      ip,
-      userAgent,
-      referer,
-      location
-    });
-    linkModel.incrementClicks(shortCode);
+    const location = { country: 'BY', city: 'Minsk' };
+
+    await Click.create({ linkId: link.id, ip, userAgent, referer, location, timestamp: Date.now() });
+    await link.update({ clicks: link.clicks + 1 });
     res.redirect(302, link.originalUrl);
   } catch (err) {
     next(err);
@@ -132,21 +131,20 @@ exports.redirect = (req, res, next) => {
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-exports.verifyPassword = (req, res, next) => {
+exports.verifyPassword = async (req, res, next) => {
   try {
     const { shortCode } = req.params;
     const { password } = req.body;
     if (!password) {
       return res.status(400).json({ error: 'Пароль обязателен' });
     }
-    const link = linkModel.getByShortCode(shortCode);
+    const link = await Link.findOne({ where: { shortCode } });
     if (!link) {
       return res.status(404).json({ error: 'Ссылка не найдена' });
     }
     if (link.password !== password) {
       return res.status(401).json({ error: 'Неверный пароль' });
     }
-   
     res.json({ message: 'Пароль верен', redirectUrl: link.originalUrl });
   } catch (err) {
     next(err);

@@ -1,9 +1,9 @@
 const jwt = require('jsonwebtoken');
-const userModel = require('../models/userModel');
+const { User } = require('../models');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'hsbcIIWUQie99iejFSj';
+const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-prod';
 
-const authenticate = (req, res, next) => {
+const authenticate = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader) {
     return res.status(401).json({ error: 'Требуется авторизация' });
@@ -14,7 +14,7 @@ const authenticate = (req, res, next) => {
   }
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    const user = userModel.getById(decoded.userId);
+    const user = await User.findByPk(decoded.userId);
     if (!user) {
       return res.status(401).json({ error: 'Пользователь не найден' });
     }

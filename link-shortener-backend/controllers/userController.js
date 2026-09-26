@@ -1,4 +1,4 @@
-const userModel = require('../models/userModel');
+const { User } = require('../models');
 const bcrypt = require('bcryptjs');
 
 // Получить профиль текущего пользователя
@@ -25,7 +25,7 @@ const bcrypt = require('bcryptjs');
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 exports.getProfile = (req, res) => {
-  const { password, ...userWithoutPassword } = req.user;
+  const { password, ...userWithoutPassword } = req.user.toJSON();
   res.json(userWithoutPassword);
 };
 
@@ -62,17 +62,18 @@ exports.getProfile = (req, res) => {
  *       404:
  *         description: Пользователь не найден
  */
-exports.updateProfile = (req, res, next) => {
+exports.updateProfile = async (req, res, next) => {
   try {
     const { name } = req.body;
     if (!name) {
       return res.status(400).json({ error: 'Имя обязательно' });
     }
-    const updated = userModel.update(req.user.id, { name });
-    if (!updated) {
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
       return res.status(404).json({ error: 'Пользователь не найден' });
     }
-    const { password, ...userWithoutPassword } = updated;
+    await user.update({ name });
+    const { password, ...userWithoutPassword } = user.toJSON();
     res.json(userWithoutPassword);
   } catch (err) {
     next(err);
@@ -120,13 +121,13 @@ exports.changePassword = async (req, res, next) => {
     if (!oldPassword || !newPassword) {
       return res.status(400).json({ error: 'Старый и новый пароль обязательны' });
     }
-    const user = userModel.getById(req.user.id);
+    const user = await User.findByPk(req.user.id);
     const valid = await bcrypt.compare(oldPassword, user.password);
     if (!valid) {
       return res.status(401).json({ error: 'Неверный старый пароль' });
     }
     const hashed = await bcrypt.hash(newPassword, 10);
-    userModel.update(req.user.id, { password: hashed });
+    await user.update({ password: hashed });
     res.json({ message: 'Пароль успешно изменен' });
   } catch (err) {
     next(err);
@@ -193,18 +194,19 @@ exports.getSettings = (req, res) => {
  *       404:
  *         description: Пользователь не найден
  */
-exports.updateSettings = (req, res, next) => {
+exports.updateSettings = async (req, res, next) => {
   try {
     const { language, timezone, notifications } = req.body;
-    const settings = {};
-    if (language) settings['settings.language'] = language;
-    if (timezone) settings['settings.timezone'] = timezone;
-    if (notifications !== undefined) settings['settings.notifications'] = notifications;
-    const updated = userModel.update(req.user.id, settings);
-    if (!updated) {
+    const settings = { ...req.user.settings };
+    if (language) settings.language = language;
+    if (timezone) settings.timezone = timezone;
+    if (notifications !== undefined) settings.notifications = notifications;
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
       return res.status(404).json({ error: 'Пользователь не найден' });
     }
-    const { password, ...userWithoutPassword } = updated;
+    await user.update({ settings });
+    const { password, ...userWithoutPassword } = user.toJSON();
     res.json(userWithoutPassword);
   } catch (err) {
     next(err);

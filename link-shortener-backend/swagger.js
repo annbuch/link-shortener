@@ -132,6 +132,7 @@ const options = {
             groupId: { type: 'integer', nullable: true, example: 1 },
             utmParams: { type: 'object', nullable: true, example: { source: 'facebook', medium: 'social' } },
             clicks: { type: 'integer', example: 42 },
+            maxClicks: { type: 'integer', nullable: true, example: 100 },
             isActive: { type: 'boolean', example: true },
             createdAt: { type: 'integer', example: 1640995200000 },
             deletedAt: { type: 'integer', nullable: true, example: null }
@@ -150,7 +151,8 @@ const options = {
               type: 'object', 
               example: { source: 'facebook', medium: 'social', campaign: 'sale' }
             },
-            algorithm: { type: 'string', enum: ['random', 'base64'], example: 'random' }
+            algorithm: { type: 'string', enum: ['random', 'base64'], example: 'random' },
+            maxClicks: { type: 'integer', nullable: true, example: 100 }
           }
         },
         UpdateLinkRequest: {
@@ -161,7 +163,8 @@ const options = {
             expiresAt: { type: 'string', format: 'date-time', example: '2026-01-01T00:00:00Z' },
             password: { type: 'string', nullable: true, example: null },
             groupId: { type: 'integer', nullable: true, example: 2 },
-            isActive: { type: 'boolean', example: true }
+            isActive: { type: 'boolean', example: true },
+            maxClicks: { type: 'integer', nullable: true, example: 100 }
           }
         },
         LinksListResponse: {

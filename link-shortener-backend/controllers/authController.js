@@ -1,8 +1,8 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const userModel = require('../models/userModel');
+const { User } = require('../models');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'hsbcIIWUQie99iejFSj'
+const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-prod'
 const JWT_EXPIRES_IN = '7d';
 
 // Регистрация
@@ -40,27 +40,18 @@ exports.register = async (req, res, next) => {
     if (!email || !password || !name) {
       return res.status(400).json({ error: 'Все поля обязательны' });
     }
-    // Проверка существующего пользователя
-    const existing = userModel.getByEmail(email);
+    const existing = await User.findOne({ where: { email } });
     if (existing) {
       return res.status(400).json({ error: 'Пользователь с таким email уже существует' });
     }
-    // Хэширование пароля
     const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = {
+    const user = await User.create({
       email,
       password: hashedPassword,
       name,
-      settings: {
-        language: 'ru',
-        timezone: 'Europe/Minsk',
-        notifications: true
-      },
-      createdAt: Date.now()
-    };
-    const user = userModel.add(newUser);
-    // Не возвращаем пароль
-    const { password: _, ...userWithoutPassword } = user;
+      settings: { language: 'ru', timezone: 'Europe/Minsk', notifications: true }
+    });
+    const { password: _, ...userWithoutPassword } = user.toJSON();
     res.status(201).json(userWithoutPassword);
   } catch (err) {
     next(err);
@@ -106,7 +97,7 @@ exports.login = async (req, res, next) => {
     if (!email || !password) {
       return res.status(400).json({ error: 'Email и пароль обязательны' });
     }
-    const user = userModel.getByEmail(email);
+    const user = await User.findOne({ where: { email } });
     if (!user) {
       return res.status(401).json({ error: 'Неверный email или пароль' });
     }
@@ -167,7 +158,7 @@ exports.logout = (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-exports.refresh = (req, res, next) => {
+exports.refresh = async (req, res) => {
   const authHeader = req.headers.authorization;
   if (!authHeader) {
     return res.status(401).json({ error: 'Требуется токен' });
@@ -175,7 +166,7 @@ exports.refresh = (req, res, next) => {
   const token = authHeader.split(' ')[1];
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    const user = userModel.getById(decoded.userId);
+    const user = await User.findByPk(decoded.userId);
     if (!user) {
       return res.status(401).json({ error: 'Пользователь не найден' });
     }
@@ -223,7 +214,6 @@ exports.refresh = (req, res, next) => {
 exports.forgotPassword = (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: 'Email обязателен' });
-  // имитация отправки письма
   res.json({ message: 'Инструкции по восстановлению отправлены на email' });
 };
 
@@ -278,14 +268,12 @@ exports.resetPassword = async (req, res, next) => {
     if (!token || !newPassword) {
       return res.status(400).json({ error: 'Токен и новый пароль обязательны' });
     }
-    // имитиация проверки токена сброса
-    // токены сброса в БД
-    const user = userModel.getByEmail('user@example.com'); // заглушка
+    const user = await User.findOne({ where: { email: 'user@example.com' } });
     if (!user) {
       return res.status(404).json({ error: 'Пользователь не найден' });
     }
     const hashed = await bcrypt.hash(newPassword, 10);
-    userModel.update(user.id, { password: hashed });
+    await user.update({ password: hashed });
     res.json({ message: 'Пароль успешно изменен' });
   } catch (err) {
     next(err);

@@ -1,6 +1,5 @@
-const linkModel = require('../models/linkModel');
-const groupModel = require('../models/groupModel');
-const clickModel = require('../models/clickModel');
+const { Link, Group } = require('../models');
+const { Op } = require('sequelize');
 
 const generateShortCode = () => Math.random().toString(36).substring(2, 8);
 
@@ -42,13 +41,19 @@ const generateShortCode = () => Math.random().toString(36).substring(2, 8);
  *       401:
  *         description: Требуется авторизация
  */
-exports.getAllLinks = (req, res, next) => {
+exports.getAllLinks = async (req, res, next) => {
   try {
     const { groupId, search, sort } = req.query;
-    const filters = { userId: req.user.id };
-    if (groupId) filters.groupId = Number(groupId);
-    if (search) filters.search = search;
-    const links = linkModel.getAll(filters);
+    const where = { userId: req.user.id, deletedAt: null };
+    if (groupId) where.groupId = Number(groupId);
+    if (search) {
+      where[Op.or] = [
+        { originalUrl: { [Op.iLike]: `%${search}%` } },
+        { alias: { [Op.iLike]: `%${search}%` } }
+      ];
+    }
+    const order = sort ? [[sort, 'DESC']] : [['createdAt', 'DESC']];
+    const links = await Link.findAll({ where, order });
     res.json(links);
   } catch (err) {
     next(err);
@@ -86,9 +91,9 @@ exports.getAllLinks = (req, res, next) => {
  *       401:
  *         description: Требуется авторизация
  */
-exports.createLink = (req, res, next) => {
+exports.createLink = async (req, res, next) => {
   try {
-    const { originalUrl, alias, expiresAt, password, groupId, utmParams, algorithm } = req.body;
+    const { originalUrl, alias, expiresAt, password, groupId, utmParams, algorithm, maxClicks } = req.body;
     if (!originalUrl) {
       return res.status(400).json({ error: 'originalUrl обязателен' });
     }
@@ -97,21 +102,33 @@ exports.createLink = (req, res, next) => {
     }
 
     if (groupId) {
-      const group = groupModel.getById(Number(groupId), req.user.id);
+      const group = await Group.findOne({ where: { id: Number(groupId), userId: req.user.id } });
       if (!group) {
         return res.status(400).json({ error: 'Группа не найдена' });
       }
     }
 
-    let shortCode = generateShortCode();
-    if (alias) {
-      const existing = linkModel.getAll().find(l => l.alias === alias);
-      if (existing) {
-        return res.status(400).json({ error: 'Alias уже используется' });
-      }
-      shortCode = alias;
+    const aliasInUse = alias
+      ? await Link.findOne({ where: { alias } })
+      : null;
+    if (aliasInUse) {
+      return res.status(400).json({ error: 'Alias уже используется' });
     }
-    const newLink = {
+
+    let shortCode;
+    if (alias) {
+      shortCode = alias;
+    } else if (algorithm === 'base64') {
+      shortCode = Buffer.from(originalUrl).toString('base64url').slice(0, 10);
+      const exists = await Link.findOne({ where: { shortCode } });
+      if (exists) {
+        shortCode = shortCode + Math.floor(Math.random() * 1000);
+      }
+    } else {
+      shortCode = generateShortCode();
+    }
+
+    const link = await Link.create({
       userId: req.user.id,
       originalUrl,
       shortCode,
@@ -120,12 +137,11 @@ exports.createLink = (req, res, next) => {
       password: password || null,
       groupId: groupId ? Number(groupId) : null,
       utmParams: utmParams || null,
+      maxClicks: maxClicks || null,
       clicks: 0,
       isActive: true,
-      createdAt: Date.now(),
       deletedAt: null
-    };
-    const link = linkModel.add(newLink);
+    });
     res.status(201).json(link);
   } catch (err) {
     next(err);
@@ -164,10 +180,10 @@ exports.createLink = (req, res, next) => {
  *       401:
  *         description: Требуется авторизация
  */
-exports.getLinkById = (req, res, next) => {
+exports.getLinkById = async (req, res, next) => {
   try {
     const id = Number(req.params.id);
-    const link = linkModel.getById(id, req.user.id);
+    const link = await Link.findOne({ where: { id, userId: req.user.id, deletedAt: null } });
     if (!link) {
       return res.status(404).json({ error: 'Ссылка не найдена' });
     }
@@ -216,25 +232,22 @@ exports.getLinkById = (req, res, next) => {
  *       401:
  *         description: Требуется авторизация
  */
-exports.updateLink = (req, res, next) => {
+exports.updateLink = async (req, res, next) => {
   try {
     const id = Number(req.params.id);
-    const { originalUrl, alias, expiresAt, password, groupId, isActive } = req.body;
-    // Проверяем, что ссылка существует
-    const existing = linkModel.getById(id, req.user.id);
+    const { originalUrl, alias, expiresAt, password, groupId, isActive, maxClicks } = req.body;
+    const existing = await Link.findOne({ where: { id, userId: req.user.id, deletedAt: null } });
     if (!existing) {
       return res.status(404).json({ error: 'Ссылка не найдена' });
     }
-    // Если меняем alias, проверяем уникальность
     if (alias && alias !== existing.alias) {
-      const conflict = linkModel.getAll().find(l => l.alias === alias && l.id !== id);
+      const conflict = await Link.findOne({ where: { alias, id: { [Op.ne]: id } } });
       if (conflict) {
         return res.status(400).json({ error: 'Alias уже используется' });
       }
     }
-    // Проверка группы
     if (groupId) {
-      const group = groupModel.getById(Number(groupId), req.user.id);
+      const group = await Group.findOne({ where: { id: Number(groupId), userId: req.user.id } });
       if (!group) {
         return res.status(400).json({ error: 'Группа не найдена' });
       }
@@ -246,12 +259,10 @@ exports.updateLink = (req, res, next) => {
     if (password !== undefined) updates.password = password;
     if (groupId !== undefined) updates.groupId = groupId ? Number(groupId) : null;
     if (isActive !== undefined) updates.isActive = isActive;
+    if (maxClicks !== undefined) updates.maxClicks = maxClicks;
 
-    const updated = linkModel.update(id, req.user.id, updates);
-    if (!updated) {
-      return res.status(404).json({ error: 'Ссылка не найдена' });
-    }
-    res.json(updated);
+    await existing.update(updates);
+    res.json(existing);
   } catch (err) {
     next(err);
   }
@@ -280,13 +291,14 @@ exports.updateLink = (req, res, next) => {
  *       401:
  *         description: Требуется авторизация
  */
-exports.deleteLink = (req, res, next) => {
+exports.deleteLink = async (req, res, next) => {
   try {
     const id = Number(req.params.id);
-    const result = linkModel.softDelete(id, req.user.id);
-    if (!result) {
+    const link = await Link.findOne({ where: { id, userId: req.user.id, deletedAt: null } });
+    if (!link) {
       return res.status(404).json({ error: 'Ссылка не найдена или уже удалена' });
     }
+    await link.update({ deletedAt: Date.now() });
     res.status(204).send();
   } catch (err) {
     next(err);
@@ -324,13 +336,14 @@ exports.deleteLink = (req, res, next) => {
  *       401:
  *         description: Требуется авторизация
  */
-exports.restoreLink = (req, res, next) => {
+exports.restoreLink = async (req, res, next) => {
   try {
     const id = Number(req.params.id);
-    const result = linkModel.restore(id, req.user.id);
-    if (!result) {
+    const link = await Link.findOne({ where: { id, userId: req.user.id, deletedAt: { [Op.ne]: null } } });
+    if (!link) {
       return res.status(404).json({ error: 'Ссылка не найдена в корзине' });
     }
+    await link.update({ deletedAt: null });
     res.json({ message: 'Ссылка восстановлена' });
   } catch (err) {
     next(err);
@@ -358,9 +371,9 @@ exports.restoreLink = (req, res, next) => {
  *       401:
  *         description: Требуется авторизация
  */
-exports.getTrash = (req, res, next) => {
+exports.getTrash = async (req, res, next) => {
   try {
-    const trash = linkModel.getTrash(req.user.id);
+    const trash = await Link.findAll({ where: { userId: req.user.id, deletedAt: { [Op.ne]: null } } });
     res.json(trash);
   } catch (err) {
     next(err);
@@ -382,12 +395,9 @@ exports.getTrash = (req, res, next) => {
  *       401:
  *         description: Требуется авторизация
  */
-exports.emptyTrash = (req, res, next) => {
+exports.emptyTrash = async (req, res, next) => {
   try {
-    const trash = linkModel.getTrash(req.user.id);
-    for (const link of trash) {
-      linkModel.hardDelete(link.id, req.user.id);
-    }
+    await Link.destroy({ where: { userId: req.user.id, deletedAt: { [Op.ne]: null } } });
     res.status(204).send();
   } catch (err) {
     next(err);
@@ -425,20 +435,21 @@ exports.emptyTrash = (req, res, next) => {
  *       401:
  *         description: Требуется авторизация
  */
-exports.activateLink = (req, res, next) => {
+exports.activateLink = async (req, res, next) => {
   try {
     const id = Number(req.params.id);
-    const updated = linkModel.update(id, req.user.id, { isActive: true });
-    if (!updated) {
+    const link = await Link.findOne({ where: { id, userId: req.user.id, deletedAt: null } });
+    if (!link) {
       return res.status(404).json({ error: 'Ссылка не найдена' });
     }
-    res.json(updated);
+    await link.update({ isActive: true });
+    res.json(link);
   } catch (err) {
     next(err);
   }
 };
 
-// POST /links/:id/deactivat
+// POST /links/:id/deactivate
 /**
  * @openapi
  * /links/{id}/deactivate:
@@ -469,14 +480,15 @@ exports.activateLink = (req, res, next) => {
  *       401:
  *         description: Требуется авторизация
  */
-exports.deactivateLink = (req, res, next) => {
+exports.deactivateLink = async (req, res, next) => {
   try {
     const id = Number(req.params.id);
-    const updated = linkModel.update(id, req.user.id, { isActive: false });
-    if (!updated) {
+    const link = await Link.findOne({ where: { id, userId: req.user.id, deletedAt: null } });
+    if (!link) {
       return res.status(404).json({ error: 'Ссылка не найдена' });
     }
-    res.json(updated);
+    await link.update({ isActive: false });
+    res.json(link);
   } catch (err) {
     next(err);
   }
@@ -513,14 +525,17 @@ exports.deactivateLink = (req, res, next) => {
  *       401:
  *         description: Требуется авторизация
  */
-exports.getQR = (req, res) => {
-  const id = Number(req.params.id);
-  const link = linkModel.getById(id, req.user.id);
-  if (!link) {
-    return res.status(404).json({ error: 'Ссылка не найдена' });
+exports.getQR = async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const link = await Link.findOne({ where: { id, userId: req.user.id, deletedAt: null } });
+    if (!link) {
+      return res.status(404).json({ error: 'Ссылка не найдена' });
+    }
+    res.json({ message: 'QR-код будет сгенерирован', url: `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${link.shortCode}` });
+  } catch (err) {
+    next(err);
   }
-  // В реальности нужно генерировать QR-код и возвращать изображение
-  res.json({ message: 'QR-код будет сгенерирован', url: `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${link.shortCode}` });
 };
 
 // GET /links/:id/preview (заглушка)
@@ -554,16 +569,19 @@ exports.getQR = (req, res) => {
  *       401:
  *         description: Требуется авторизация
  */
-exports.getPreview = (req, res) => {
-  const id = Number(req.params.id);
-  const link = linkModel.getById(id, req.user.id);
-  if (!link) {
-    return res.status(404).json({ error: 'Ссылка не найдена' });
+exports.getPreview = async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const link = await Link.findOne({ where: { id, userId: req.user.id, deletedAt: null } });
+    if (!link) {
+      return res.status(404).json({ error: 'Ссылка не найдена' });
+    }
+    res.json({
+      title: 'Заглушка для превью',
+      description: 'Описание сайта',
+      image: 'https://via.placeholder.com/150'
+    });
+  } catch (err) {
+    next(err);
   }
- 
-  res.json({
-    title: 'Заглушка для превью',
-    description: 'Описание сайта',
-    image: 'https://via.placeholder.com/150'
-  });
 };

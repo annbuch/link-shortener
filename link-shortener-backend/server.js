@@ -1,4 +1,6 @@
+require('dotenv').config();
 const express = require('express');
+const { sequelize } = require('./models');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const linkRoutes = require('./routes/links');
@@ -11,7 +13,7 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./swagger');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
@@ -27,10 +29,21 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
   customSiteTitle: 'Click.me API Documentation'
 }));
 
-app.use('/', redirectRoutes); 
+app.use('/', redirectRoutes);
 
 app.use(errorHandler);
 
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-});
+sequelize.authenticate()
+  .then(() => {
+    console.log('PostgreSQL connected successfully');
+    return sequelize.sync();
+  })
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
+  })
+  .catch(err => {
+    console.error('Unable to connect to PostgreSQL:', err.message);
+    process.exit(1);
+  });

@@ -1,5 +1,5 @@
-const linkModel = require('../models/linkModel');
-const clickModel = require('../models/clickModel');
+const { Link, Click } = require('../models');
+const { Op } = require('sequelize');
 
 // GET /links/:id/analytics
 /**
@@ -33,22 +33,44 @@ const clickModel = require('../models/clickModel');
  *       401:
  *         description: Требуется авторизация
  */
-exports.getAnalytics = (req, res, next) => {
+exports.getAnalytics = async (req, res, next) => {
   try {
     const id = Number(req.params.id);
-    const link = linkModel.getById(id, req.user.id);
+    const link = await Link.findOne({ where: { id, userId: req.user.id, deletedAt: null } });
     if (!link) {
       return res.status(404).json({ error: 'Ссылка не найдена' });
     }
-    const stats = clickModel.getStats(id);
-    const daily = clickModel.getDailyStats(id);
-    const geo = clickModel.getGeoStats(id);
-    const devices = clickModel.getDeviceStats(id);
-    const referrers = clickModel.getReferrerStats(id);
+    const clicks = await Click.findAll({ where: { linkId: id } });
+
+    const total = clicks.length;
+    const uniqueIPs = new Set(clicks.map(c => c.ip)).size;
+
+    const daily = {};
+    const geo = {};
+    const devices = {};
+    const referrers = {};
+    clicks.forEach(c => {
+      const date = new Date(c.timestamp).toISOString().split('T')[0];
+      daily[date] = (daily[date] || 0) + 1;
+
+      const country = c.location?.country || 'Unknown';
+      geo[country] = (geo[country] || 0) + 1;
+
+      const ua = c.userAgent || '';
+      let type = 'Other';
+      if (/mobile/i.test(ua)) type = 'Mobile';
+      else if (/tablet/i.test(ua)) type = 'Tablet';
+      else if (/windows|mac|linux/i.test(ua)) type = 'Desktop';
+      devices[type] = (devices[type] || 0) + 1;
+
+      const ref = c.referer || 'direct';
+      referrers[ref] = (referrers[ref] || 0) + 1;
+    });
+
     res.json({
       link: link.shortCode,
-      totalClicks: stats.total,
-      uniqueVisitors: stats.uniqueIPs,
+      totalClicks: total,
+      uniqueVisitors: uniqueIPs,
       daily,
       geo,
       devices,
@@ -112,28 +134,30 @@ exports.getAnalytics = (req, res, next) => {
  *       401:
  *         description: Требуется авторизация
  */
-exports.getClicksList = (req, res, next) => {
+exports.getClicksList = async (req, res, next) => {
   try {
     const id = Number(req.params.id);
-    const link = linkModel.getById(id, req.user.id);
+    const link = await Link.findOne({ where: { id, userId: req.user.id, deletedAt: null } });
     if (!link) {
       return res.status(404).json({ error: 'Ссылка не найдена' });
     }
     const { from, to, page = 1, limit = 20 } = req.query;
-    const filters = {};
-    if (from) filters.fromDate = new Date(from).getTime();
-    if (to) filters.toDate = new Date(to).getTime();
-    let clicks = clickModel.getByLinkId(id, filters);
+    const where = { linkId: id };
+    if (from) where.timestamp = { ...(where.timestamp || {}), [Op.gte]: new Date(from).getTime() };
+    if (to) where.timestamp = { ...(where.timestamp || {}), [Op.lte]: new Date(to).getTime() };
 
-    const start = (page - 1) * limit;
-    const end = start + Number(limit);
-    const paginated = clicks.slice(start, end);
+    const { count, rows } = await Click.findAndCountAll({
+      where,
+      limit: Number(limit),
+      offset: (Number(page) - 1) * Number(limit),
+      order: [['timestamp', 'DESC']]
+    });
     res.json({
-      data: paginated,
-      total: clicks.length,
+      data: rows,
+      total: count,
       page: Number(page),
       limit: Number(limit),
-      totalPages: Math.ceil(clicks.length / limit)
+      totalPages: Math.ceil(count / limit)
     });
   } catch (err) {
     next(err);
@@ -172,14 +196,19 @@ exports.getClicksList = (req, res, next) => {
  *       401:
  *         description: Требуется авторизация
  */
-exports.getDaily = (req, res, next) => {
+exports.getDaily = async (req, res, next) => {
   try {
     const id = Number(req.params.id);
-    const link = linkModel.getById(id, req.user.id);
+    const link = await Link.findOne({ where: { id, userId: req.user.id, deletedAt: null } });
     if (!link) {
       return res.status(404).json({ error: 'Ссылка не найдена' });
     }
-    const daily = clickModel.getDailyStats(id);
+    const clicks = await Click.findAll({ where: { linkId: id } });
+    const daily = {};
+    clicks.forEach(c => {
+      const date = new Date(c.timestamp).toISOString().split('T')[0];
+      daily[date] = (daily[date] || 0) + 1;
+    });
     res.json(daily);
   } catch (err) {
     next(err);
@@ -219,14 +248,19 @@ exports.getDaily = (req, res, next) => {
  *       401:
  *         description: Требуется авторизация
  */
-exports.getGeo = (req, res, next) => {
+exports.getGeo = async (req, res, next) => {
   try {
     const id = Number(req.params.id);
-    const link = linkModel.getById(id, req.user.id);
+    const link = await Link.findOne({ where: { id, userId: req.user.id, deletedAt: null } });
     if (!link) {
       return res.status(404).json({ error: 'Ссылка не найдена' });
     }
-    const geo = clickModel.getGeoStats(id);
+    const clicks = await Click.findAll({ where: { linkId: id } });
+    const geo = {};
+    clicks.forEach(c => {
+      const country = c.location?.country || 'Unknown';
+      geo[country] = (geo[country] || 0) + 1;
+    });
     res.json(geo);
   } catch (err) {
     next(err);
@@ -266,14 +300,23 @@ exports.getGeo = (req, res, next) => {
  *       401:
  *         description: Требуется авторизация
  */
-exports.getDevices = (req, res, next) => {
+exports.getDevices = async (req, res, next) => {
   try {
     const id = Number(req.params.id);
-    const link = linkModel.getById(id, req.user.id);
+    const link = await Link.findOne({ where: { id, userId: req.user.id, deletedAt: null } });
     if (!link) {
       return res.status(404).json({ error: 'Ссылка не найдена' });
     }
-    const devices = clickModel.getDeviceStats(id);
+    const clicks = await Click.findAll({ where: { linkId: id } });
+    const devices = {};
+    clicks.forEach(c => {
+      const ua = c.userAgent || '';
+      let type = 'Other';
+      if (/mobile/i.test(ua)) type = 'Mobile';
+      else if (/tablet/i.test(ua)) type = 'Tablet';
+      else if (/windows|mac|linux/i.test(ua)) type = 'Desktop';
+      devices[type] = (devices[type] || 0) + 1;
+    });
     res.json(devices);
   } catch (err) {
     next(err);
@@ -313,15 +356,20 @@ exports.getDevices = (req, res, next) => {
  *       401:
  *         description: Требуется авторизация
  */
-exports.getReferrers = (req, res, next) => {
+exports.getReferrers = async (req, res, next) => {
   try {
     const id = Number(req.params.id);
-    const link = linkModel.getById(id, req.user.id);
+    const link = await Link.findOne({ where: { id, userId: req.user.id, deletedAt: null } });
     if (!link) {
       return res.status(404).json({ error: 'Ссылка не найдена' });
     }
-    const referrers = clickModel.getReferrerStats(id);
-    res.json(referrers);
+    const clicks = await Click.findAll({ where: { linkId: id } });
+    const refs = {};
+    clicks.forEach(c => {
+      const ref = c.referer || 'direct';
+      refs[ref] = (refs[ref] || 0) + 1;
+    });
+    res.json(refs);
   } catch (err) {
     next(err);
   }
@@ -346,10 +394,9 @@ exports.getReferrers = (req, res, next) => {
  *       401:
  *         description: Требуется авторизация
  */
-exports.getOverview = (req, res, next) => {
+exports.getOverview = async (req, res, next) => {
   try {
-    const userId = req.user.id;
-    const links = linkModel.getUserLinks(userId);
+    const links = await Link.findAll({ where: { userId: req.user.id, deletedAt: null } });
     let totalClicks = 0;
     let activeLinks = 0;
     let mostPopular = null;
@@ -402,14 +449,17 @@ exports.getOverview = (req, res, next) => {
  *       401:
  *         description: Требуется авторизация
  */
-exports.exportCSV = (req, res) => {
-  const id = Number(req.params.id);
-  const link = linkModel.getById(id, req.user.id);
-  if (!link) {
-    return res.status(404).json({ error: 'Ссылка не найдена' });
+exports.exportCSV = async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const link = await Link.findOne({ where: { id, userId: req.user.id, deletedAt: null } });
+    if (!link) {
+      return res.status(404).json({ error: 'Ссылка не найдена' });
+    }
+    res.json({ message: 'CSV будет сгенерирован' });
+  } catch (err) {
+    next(err);
   }
-
-  res.json({ message: 'CSV будет сгенерирован' });
 };
 
 // GET /links/:id/export/pdf (заглушка)
@@ -443,11 +493,15 @@ exports.exportCSV = (req, res) => {
  *       401:
  *         description: Требуется авторизация
  */
-exports.exportPDF = (req, res) => {
-  const id = Number(req.params.id);
-  const link = linkModel.getById(id, req.user.id);
-  if (!link) {
-    return res.status(404).json({ error: 'Ссылка не найдена' });
+exports.exportPDF = async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const link = await Link.findOne({ where: { id, userId: req.user.id, deletedAt: null } });
+    if (!link) {
+      return res.status(404).json({ error: 'Ссылка не найдена' });
+    }
+    res.json({ message: 'PDF будет сгенерирован' });
+  } catch (err) {
+    next(err);
   }
-  res.json({ message: 'PDF будет сгенерирован' });
 };
