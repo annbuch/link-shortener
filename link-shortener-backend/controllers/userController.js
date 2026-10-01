@@ -24,7 +24,6 @@ const bcrypt = require('bcryptjs');
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-// scope по умолчанию скрывает passwordHash и refreshToken
 exports.getProfile = (req, res) => {
   res.json(req.user.toJSON());
 };

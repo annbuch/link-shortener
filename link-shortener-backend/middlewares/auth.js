@@ -2,7 +2,6 @@ const jwt = require('jsonwebtoken');
 const { User } = require('../models');
 const { verifyAccessToken, extractBearerToken } = require('../utils/tokenService');
 
-// Проверка JWT для защищённых маршрутов: Authorization: Bearer <token>
 const authenticate = async (req, res, next) => {
   const { token, error } = extractBearerToken(req);
   if (!token) {
@@ -29,7 +28,6 @@ const authenticate = async (req, res, next) => {
   next();
 };
 
-// Мягкий вариант: если токен валиден — req.user заполняется, иначе запрос идёт без пользователя
 const optionalAuth = async (req, res, next) => {
   const { token } = extractBearerToken(req);
   if (!token) return next();
@@ -42,7 +40,6 @@ const optionalAuth = async (req, res, next) => {
       req.auth = decoded;
     }
   } catch (err) {
-    // невалидный токен просто игнорируем
   }
   next();
 };

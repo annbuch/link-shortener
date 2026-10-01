@@ -3,7 +3,6 @@ const router = express.Router();
 const userController = require('../controllers/userController');
 const { authenticate } = require('../middlewares/auth');
 
-// Все маршруты профиля доступны только авторизованному пользователю
 router.use(authenticate);
 
 /**

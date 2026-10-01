@@ -9,7 +9,6 @@ const ACCESS_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1h';
 const REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
 const BCRYPT_ROUNDS = Number(process.env.BCRYPT_ROUNDS) || 10;
 
-// Флаг для предупреждения в консоли: секрет не задан в .env
 const secretFromEnv = Boolean(process.env.JWT_SECRET);
 
 const signAccessToken = (user) => jwt.sign(
@@ -24,20 +23,17 @@ const signRefreshToken = (user) => jwt.sign(
   { expiresIn: REFRESH_EXPIRES_IN }
 );
 
-// Пара токенов: access (короткоживущий) + refresh (долгоживущий)
 const issueTokenPair = (user) => {
   const token = signAccessToken(user);
   const refreshToken = signRefreshToken(user);
   return { token, refreshToken, expiresIn: ACCESS_EXPIRES_IN };
 };
 
-// В БД refresh-токен не хранится в открытом виде, только sha256-хеш
 const hashToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
 
 const verifyAccessToken = (token) => jwt.verify(token, JWT_SECRET);
 const verifyRefreshToken = (token) => jwt.verify(token, JWT_REFRESH_SECRET);
 
-// Достаёт Bearer-токен из заголовка Authorization
 const extractBearerToken = (req) => {
   const header = req.headers.authorization || req.headers.Authorization;
   if (!header) return { token: null, error: 'Требуется авторизация' };
