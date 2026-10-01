@@ -13,13 +13,37 @@ module.exports = (sequelize, DataTypes) => {
       unique: true,
       validate: { isEmail: true }
     },
-    password: {
+    passwordHash: {
       type: DataTypes.STRING,
       allowNull: false
     },
     name: {
       type: DataTypes.STRING,
       allowNull: false
+    },
+    role: {
+      type: DataTypes.STRING(20),
+      allowNull: false,
+      defaultValue: 'user',
+      validate: { isIn: [['user', 'admin']] }
+    },
+    refreshToken: {
+      type: DataTypes.STRING(255),
+      allowNull: true
+    },
+    lastLoginAt: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+      get() {
+        return this.getDataValue('lastLoginAt') === null
+          ? null
+          : Number(this.getDataValue('lastLoginAt'));
+      }
+    },
+    isVerified: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true
     },
     settings: {
       type: DataTypes.JSONB,
@@ -28,7 +52,13 @@ module.exports = (sequelize, DataTypes) => {
   }, {
     tableName: 'users',
     timestamps: true,
-    underscored: true
+    underscored: true,
+    defaultScope: {
+      attributes: { exclude: ['passwordHash', 'refreshToken'] }
+    },
+    scopes: {
+      withSecrets: { attributes: {} }
+    }
   });
 
   User.associate = (models) => {

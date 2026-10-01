@@ -60,6 +60,9 @@ const options = {
             id: { type: 'integer', example: 1 },
             email: { type: 'string', example: 'user@example.com' },
             name: { type: 'string', example: 'Иван Иванов' },
+            role: { type: 'string', enum: ['user', 'admin'], example: 'user' },
+            isVerified: { type: 'boolean', example: true },
+            lastLoginAt: { type: 'integer', nullable: true, example: 1767225600000 },
             settings: {
               type: 'object',
               properties: {
@@ -73,7 +76,23 @@ const options = {
         },
         RegisterRequest: {
           type: 'object',
-          required: ['email', 'password', 'name'],
+          required: ['email', 'password'],
+          properties: {
+            email: { type: 'string', format: 'email', example: 'user@example.com' },
+            password: { type: 'string', format: 'password', minLength: 6, example: 'password123' },
+            name: { type: 'string', example: 'Иван Иванов' }
+          }
+        },
+        RefreshRequest: {
+          type: 'object',
+          required: ['refreshToken'],
+          properties: {
+            refreshToken: { type: 'string', example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' }
+          }
+        },
+        RegisterRequest: {
+          type: 'object',
+          required: ['email', 'password'],
           properties: {
             email: { type: 'string', format: 'email', example: 'user@example.com' },
             password: { type: 'string', format: 'password', minLength: 6, example: 'password123' },
@@ -92,6 +111,7 @@ const options = {
           type: 'object',
           properties: {
             token: { type: 'string', example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' },
+            refreshToken: { type: 'string', example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' },
             user: { $ref: '#/components/schemas/User' }
           }
         },
@@ -104,10 +124,12 @@ const options = {
         },
         ChangePasswordRequest: {
           type: 'object',
-          required: ['oldPassword', 'newPassword'],
+          required: ['newPassword'],
+          description: 'currentPassword (или oldPassword) — текущий пароль, newPassword — новый (минимум 6 символов)',
           properties: {
+            currentPassword: { type: 'string', format: 'password', example: 'old123' },
             oldPassword: { type: 'string', format: 'password', example: 'old123' },
-            newPassword: { type: 'string', format: 'password', minLength: 6, example: 'new123' }
+            newPassword: { type: 'string', format: 'password', minLength: 6, example: 'newpassword123' }
           }
         },
         UpdateSettingsRequest: {
@@ -332,6 +354,7 @@ const options = {
     tags: [
       { name: 'Auth', description: 'Аутентификация и управление токенами' },
       { name: 'Users', description: 'Профиль и настройки пользователя' },
+      { name: 'Profile', description: 'Защищённые маршруты текущего пользователя: данные и удаление аккаунта' },
       { name: 'Links', description: 'Управление ссылками' },
       { name: 'Groups', description: 'Группы для организации ссылок' },
       { name: 'Analytics', description: 'Статистика и аналитика переходов' },

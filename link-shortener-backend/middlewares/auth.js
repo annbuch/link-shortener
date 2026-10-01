@@ -1,28 +1,50 @@
 const jwt = require('jsonwebtoken');
 const { User } = require('../models');
+const { verifyAccessToken, extractBearerToken } = require('../utils/tokenService');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-prod';
-
+// Проверка JWT для защищённых маршрутов: Authorization: Bearer <token>
 const authenticate = async (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) {
-    return res.status(401).json({ error: 'Требуется авторизация' });
-  }
-  const token = authHeader.split(' ')[1];
+  const { token, error } = extractBearerToken(req);
   if (!token) {
-    return res.status(401).json({ error: 'Неверный формат токена' });
+    return res.status(401).json({ error });
   }
+  let decoded;
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const user = await User.findByPk(decoded.userId);
-    if (!user) {
-      return res.status(401).json({ error: 'Пользователь не найден' });
-    }
-    req.user = user;
-    next();
+    decoded = verifyAccessToken(token);
   } catch (err) {
-    return res.status(401).json({ error: 'Недействительный или истекший токен' });
+    if (err instanceof jwt.TokenExpiredError) {
+      return res.status(401).json({ error: 'Срок действия токена истёк, обновите токен' });
+    }
+    return res.status(401).json({ error: 'Недействительный токен' });
   }
+  if (decoded.type !== 'access') {
+    return res.status(401).json({ error: 'Ожидается access-токен' });
+  }
+  const user = await User.findByPk(decoded.id);
+  if (!user) {
+    return res.status(401).json({ error: 'Пользователь не найден' });
+  }
+  req.user = user;
+  req.auth = decoded;
+  next();
 };
 
-module.exports = { authenticate };
+// Мягкий вариант: если токен валиден — req.user заполняется, иначе запрос идёт без пользователя
+const optionalAuth = async (req, res, next) => {
+  const { token } = extractBearerToken(req);
+  if (!token) return next();
+  try {
+    const decoded = verifyAccessToken(token);
+    if (decoded.type !== 'access') return next();
+    const user = await User.findByPk(decoded.id);
+    if (user) {
+      req.user = user;
+      req.auth = decoded;
+    }
+  } catch (err) {
+    // невалидный токен просто игнорируем
+  }
+  next();
+};
+
+module.exports = { authenticate, optionalAuth };

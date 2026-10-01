@@ -24,9 +24,9 @@ const bcrypt = require('bcryptjs');
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
+// scope по умолчанию скрывает passwordHash и refreshToken
 exports.getProfile = (req, res) => {
-  const { password, ...userWithoutPassword } = req.user.toJSON();
-  res.json(userWithoutPassword);
+  res.json(req.user.toJSON());
 };
 
 // Обновить профиль
@@ -73,8 +73,48 @@ exports.updateProfile = async (req, res, next) => {
       return res.status(404).json({ error: 'Пользователь не найден' });
     }
     await user.update({ name });
-    const { password, ...userWithoutPassword } = user.toJSON();
-    res.json(userWithoutPassword);
+    res.json(user.toJSON());
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Удаление аккаунта (все ссылки и группы удаляются каскадом в БД)
+/**
+ * @openapi
+ * /profile:
+ *   delete:
+ *     summary: Удаление аккаунта текущего пользователя
+ *     tags: [Profile]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Аккаунт удалён
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessMessage'
+ *       401:
+ *         description: Требуется авторизация
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Пользователь не найден
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+exports.deleteProfile = async (req, res, next) => {
+  try {
+    const deleted = await User.destroy({ where: { id: req.user.id } });
+    if (!deleted) {
+      return res.status(404).json({ error: 'Пользователь не найден' });
+    }
+    res.json({ message: 'Аккаунт удалён' });
   } catch (err) {
     next(err);
   }
@@ -117,18 +157,22 @@ exports.updateProfile = async (req, res, next) => {
  */
 exports.changePassword = async (req, res, next) => {
   try {
-    const { oldPassword, newPassword } = req.body;
-    if (!oldPassword || !newPassword) {
+    const { oldPassword, currentPassword, newPassword } = req.body;
+    const current = currentPassword || oldPassword;
+    if (!current || !newPassword) {
       return res.status(400).json({ error: 'Старый и новый пароль обязательны' });
     }
-    const user = await User.findByPk(req.user.id);
-    const valid = await bcrypt.compare(oldPassword, user.password);
+    const user = await User.scope('withSecrets').findByPk(req.user.id);
+    const valid = await bcrypt.compare(current, user.passwordHash);
     if (!valid) {
       return res.status(401).json({ error: 'Неверный старый пароль' });
     }
+    if (await bcrypt.compare(newPassword, user.passwordHash)) {
+      return res.status(400).json({ error: 'Новый пароль должен отличаться от текущего' });
+    }
     const hashed = await bcrypt.hash(newPassword, 10);
-    await user.update({ password: hashed });
-    res.json({ message: 'Пароль успешно изменен' });
+    await user.update({ passwordHash: hashed, refreshToken: null });
+    res.json({ message: 'Пароль успешно изменен. Все сессии завершены, войдите заново.' });
   } catch (err) {
     next(err);
   }
@@ -206,8 +250,7 @@ exports.updateSettings = async (req, res, next) => {
       return res.status(404).json({ error: 'Пользователь не найден' });
     }
     await user.update({ settings });
-    const { password, ...userWithoutPassword } = user.toJSON();
-    res.json(userWithoutPassword);
+    res.json(user.toJSON());
   } catch (err) {
     next(err);
   }
