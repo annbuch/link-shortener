@@ -2,8 +2,6 @@ import { useEffect } from 'react'
 import { IconClose } from '../Icons/Icons'
 import styles from './Modal.module.css'
 
-// Модальное окно: затемнение, закрытие по Esc и клику по фону,
-// блокировка прокрутки страницы, возврат фокуса-ловушки не требуется для лабы.
 export function Modal({ title, onClose, children }) {
   useEffect(() => {
     const handleKeyDown = (event) => {

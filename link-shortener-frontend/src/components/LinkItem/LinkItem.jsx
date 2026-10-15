@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { buildShortUrl } from '../../utils/shortCode'
+import { pluralize } from '../../utils/plural'
 import { useTilt } from '../../hooks/useTilt'
 import { Button } from '../Button/Button'
 import {
@@ -20,23 +21,22 @@ const formatDate = (timestamp) =>
     year: 'numeric',
   })
 
-// Карточка одной ссылки: короткий адрес, копирование, оригинал, клики и действия.
-//
-// Включение/выключение ссылки: «выключенная» ссылка закрыта для переходов —
-// по короткому адресу перейти нельзя (в реальном сервисе отдаётся заглушка),
-// для этого короткий адрес и кнопка «открыть оригинал» становятся неактивными.
 export function LinkItem({ link, onEdit, onDelete, onToggle, onVisit }) {
   const [copied, setCopied] = useState(false)
   const tilt = useTilt()
   const shortUrl = buildShortUrl(link)
   const active = link.isActive
 
-  // Копирование короткого адреса в буфер обмена (иконка меняется на «галочку»).
+  useEffect(() => {
+    if (!copied) return undefined
+    const timer = setTimeout(() => setCopied(false), 1500)
+    return () => clearTimeout(timer)
+  }, [copied])
+
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(`https://${shortUrl}`)
       setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
     } catch (error) {
       console.warn('Не удалось скопировать ссылку:', error)
     }
@@ -120,7 +120,7 @@ export function LinkItem({ link, onEdit, onDelete, onToggle, onVisit }) {
       <div className={styles.meta}>
         <span className={styles.clicks}>
           <IconCursor width={15} height={15} />
-          {link.clicks} кликов
+          {pluralize(link.clicks, ['клик', 'клика', 'кликов'])}
         </span>
         <span>создана {formatDate(link.createdAt)}</span>
       </div>

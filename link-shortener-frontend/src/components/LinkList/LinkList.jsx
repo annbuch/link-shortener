@@ -2,7 +2,6 @@ import { IconLink, IconSearch } from '../Icons/Icons'
 import { LinkItem } from '../LinkItem/LinkItem'
 import styles from './LinkList.module.css'
 
-// Список ссылок в виде адаптивной сетки карточек + обработка пустого состояния.
 export function LinkList({ links, hasAny, onEdit, onDelete, onToggle, onVisit }) {
   if (links.length === 0) {
     return (

@@ -1,4 +1,3 @@
-// Генерация короткого кода (аналог short_code на бэкенде).
 const ALPHABET = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
 
 export function generateShortCode(length = 6) {
@@ -9,7 +8,10 @@ export function generateShortCode(length = 6) {
   return code
 }
 
+export function getLinkCode(link) {
+  return link.alias && link.alias.trim() ? link.alias.trim() : link.shortCode
+}
+
 export function buildShortUrl(link) {
-  const code = link.alias && link.alias.trim() ? link.alias.trim() : link.shortCode
-  return `clk.me/${code}`
+  return `clk.me/${getLinkCode(link)}`
 }

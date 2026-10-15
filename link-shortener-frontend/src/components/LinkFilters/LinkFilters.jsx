@@ -15,8 +15,6 @@ const SORT_OPTIONS = [
   { value: 'label', label: 'По алфавиту' },
 ]
 
-// Панель поиска, фильтрации и сортировки. Значения контролируются из App.
-// Поиск и оба выпадающих списка стоят в одну строку.
 export function LinkFilters({
   query,
   onQueryChange,
@@ -35,7 +33,7 @@ export function LinkFilters({
           className={styles.search}
           type="search"
           value={query}
-          placeholder="Поиск: метка, URL или алиас"
+          placeholder="Поиск: метка, URL или короткий адрес"
           aria-label="Поиск ссылок"
           onChange={(event) => onQueryChange(event.target.value)}
         />

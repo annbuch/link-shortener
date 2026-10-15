@@ -12,16 +12,13 @@
     />
     <title>Click.me</title>
     <script>
-      // Устанавливаем сохранённую тему до загрузки React, чтобы не было мигания.
       try {
         var allowedThemes = ['dark', 'light']
         var savedTheme = JSON.parse(localStorage.getItem('clickme.theme'))
         if (savedTheme && allowedThemes.indexOf(savedTheme) !== -1) {
           document.documentElement.setAttribute('data-theme', savedTheme)
         }
-      } catch (error) {
-        /* игнорируем */
-      }
+      } catch (error) {}
     </script>
   </head>
   <body>

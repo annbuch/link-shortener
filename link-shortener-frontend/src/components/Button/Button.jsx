@@ -1,7 +1,5 @@
 import styles from './Button.module.css'
 
-// Базовая кнопка. variant: primary | danger | ghost | default(по умолчанию).
-// size: sm | icon | iconSm | md(по умолчанию).
 export function Button({ variant = 'default', size = 'md', className = '', ...props }) {
   const classes = [
     styles.btn,

@@ -1,8 +1,6 @@
 import { IconClose, IconUndo } from '../Icons/Icons'
 import styles from './UndoToast.module.css'
 
-// Плашка после удаления: «Ссылка удалена» + кнопка «Вернуть».
-// Показывается несколько секунд (таймер живёт в App), закрывается вручную.
 export function UndoToast({ label, onUndo, onClose }) {
   return (
     <div className={styles.toast} role="status">

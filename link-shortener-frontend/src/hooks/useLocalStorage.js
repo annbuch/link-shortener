@@ -1,9 +1,5 @@
 import { useEffect, useState } from 'react'
 
-// Пользовательский хук: хранит состояние и синхронизирует его с localStorage.
-// - Начальное значение читается «лениво» (функция-инициализатор useState),
-//   поэтому обращение к localStorage происходит один раз при монтировании.
-// - useEffect с зависимостью [value] сохраняет новое значение при каждом изменении.
 export function useLocalStorage(key, initialValue) {
   const [value, setValue] = useState(() => {
     try {

@@ -27,6 +27,14 @@
   transform: translateY(1px);
 }
 
+.btn:disabled,
+.btn:disabled:hover {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  filter: none;
+}
+
 .primary {
   background-color: var(--primary);
   background-image: var(--header-gradient);
@@ -72,7 +80,6 @@
   border-color: var(--border);
 }
 
-/* Компактная текстовая кнопка (та же высота, что у иконочных 32×32). */
 .sm {
   height: 32px;
   padding: 0 12px;

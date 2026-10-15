@@ -79,7 +79,6 @@
   animation: spin 800ms linear infinite;
 }
 
-/* Модальное окно удаления — в общем стиле сайта. */
 .confirm {
   display: flex;
   flex-direction: column;

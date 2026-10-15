@@ -2,14 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import { IconChevronDown } from '../Icons/Icons'
 import styles from './Select.module.css'
 
-// Кастомный выпадающий список в стиле сайта (вместо нативного <select>,
-// который нельзя оформить). Управляемый: value + onChange.
 export function Select({ value, options, onChange, ariaLabel, className = '' }) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef(null)
   const current = options.find((option) => option.value === value) || options[0]
 
-  // Закрытие по клику вне и по Escape.
   useEffect(() => {
     if (!open) return undefined
     const handlePointerDown = (event) => {

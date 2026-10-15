@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import styles from './App.module.css'
-import { useLocalStorage } from './hooks/useLocalStorage'
+import { useStoredList } from './hooks/useStoredList'
 import { useDebounce } from './hooks/useDebounce'
 import { useTheme } from './hooks/useTheme'
 import { seedLinks } from './data/seedLinks'
-import { generateShortCode } from './utils/shortCode'
+import { generateShortCode, getLinkCode } from './utils/shortCode'
+import { pluralize } from './utils/plural'
 import { Button } from './components/Button/Button'
 import { LinkForm } from './components/LinkForm/LinkForm'
 import { LinkFilters } from './components/LinkFilters/LinkFilters'
@@ -17,6 +18,7 @@ import { IconAlert, IconLink, IconPlus } from './components/Icons/Icons'
 
 const STORAGE_KEY = 'clickme.links.v1'
 const AUTOSAVE_KEY = 'clickme.links.autosave'
+const LOAD_DELAY = 1000
 
 const createId = () =>
   typeof crypto !== 'undefined' && crypto.randomUUID
@@ -24,51 +26,39 @@ const createId = () =>
     : `${Date.now()}-${Math.random().toString(16).slice(2)}`
 
 function App() {
-  // Тема оформления (prototypes) — хранится в localStorage.
   const [theme, setTheme] = useTheme()
 
-  // Основной список ссылок синхронизируется с localStorage.
-  const [links, setLinks] = useLocalStorage(STORAGE_KEY, seedLinks)
+  const [links, setLinks, loading] = useStoredList(STORAGE_KEY, seedLinks, LOAD_DELAY)
 
-  // Состояние интерфейса.
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [sortBy, setSortBy] = useState('newest')
   const [isEditorOpen, setEditorOpen] = useState(false)
   const [editingId, setEditingId] = useState(null)
-  const [loading, setLoading] = useState(true)
 
-  // Подтверждение удаления и последнее удаление (для отмены).
   const [pendingDelete, setPendingDelete] = useState(null)
   const [lastDeleted, setLastDeleted] = useState(null)
 
   const editingLink = links.find((link) => link.id === editingId) || null
 
-  // Доп. эффект 1: имитация загрузки с сервера (задержка 1 секунда) при монтировании.
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 1000)
-    return () => clearTimeout(timer)
-  }, [])
+    document.title = loading
+      ? 'Click.me — загрузка…'
+      : `Click.me — ${pluralize(links.length, ['ссылка', 'ссылки', 'ссылок'])}`
+  }, [links.length, loading])
 
-  // Доп. эффект 2: динамический заголовок страницы по количеству ссылок.
+  const debouncedLinks = useDebounce(loading ? null : links, 500)
   useEffect(() => {
-    document.title = `Click.me — ${links.length} ссылок`
-  }, [links.length])
-
-  // Доп. эффект 3: автосохранение с debounce (500 мс после последнего изменения).
-  const debouncedLinks = useDebounce(links, 500)
-  useEffect(() => {
+    if (debouncedLinks === null) return
     window.localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(debouncedLinks))
   }, [debouncedLinks])
 
-  // Доп. эффект: плашка «Вернуть» автоматически скрывается через 6 секунд.
   useEffect(() => {
     if (!lastDeleted) return undefined
     const timer = setTimeout(() => setLastDeleted(null), 6000)
     return () => clearTimeout(timer)
   }, [lastDeleted])
 
-  // Фильтрация и сортировка списка (пересчёт только при изменении зависимостей).
   const visibleLinks = useMemo(() => {
     const normalized = query.trim().toLowerCase()
     let result = links
@@ -78,7 +68,7 @@ function App() {
         (link) =>
           link.label.toLowerCase().includes(normalized) ||
           link.originalUrl.toLowerCase().includes(normalized) ||
-          (link.alias || '').toLowerCase().includes(normalized),
+          getLinkCode(link).toLowerCase().includes(normalized),
       )
     }
 
@@ -105,7 +95,6 @@ function App() {
     return sorted
   }, [links, query, statusFilter, sortBy])
 
-  // Управление модальным окном добавления/редактирования.
   const openCreate = () => {
     setEditingId(null)
     setEditorOpen(true)
@@ -121,7 +110,11 @@ function App() {
     setEditingId(null)
   }
 
-  // CRUD-операции.
+  const isAliasTaken = (alias, exceptId) =>
+    links.some(
+      (link) => link.id !== exceptId && getLinkCode(link).toLowerCase() === alias.toLowerCase(),
+    )
+
   const handleCreate = (values) => {
     const newLink = {
       id: createId(),
@@ -156,7 +149,6 @@ function App() {
     setPendingDelete(null)
   }
 
-  // Возврат удалённой ссылки на прежнее место.
   const undoDelete = () => {
     if (!lastDeleted) return
     setLinks((prev) => {
@@ -196,25 +188,12 @@ function App() {
 
         <div className={styles.tools}>
           <ThemeSwitcher theme={theme} onChange={setTheme} />
-          <Button variant="primary" onClick={openCreate}>
+          <Button variant="primary" onClick={openCreate} disabled={loading}>
             <IconPlus width={18} height={18} />
             Новая ссылка
           </Button>
         </div>
       </header>
-
-      <Stats links={links} />
-
-      <LinkFilters
-        query={query}
-        onQueryChange={setQuery}
-        statusFilter={statusFilter}
-        onStatusFilterChange={setStatusFilter}
-        sortBy={sortBy}
-        onSortByChange={setSortBy}
-        total={links.length}
-        visible={visibleLinks.length}
-      />
 
       {loading ? (
         <div className={styles.loading}>
@@ -222,14 +201,29 @@ function App() {
           Загрузка данных…
         </div>
       ) : (
-        <LinkList
-          links={visibleLinks}
-          hasAny={links.length > 0}
-          onEdit={openEdit}
-          onDelete={requestDelete}
-          onToggle={handleToggle}
-          onVisit={handleVisit}
-        />
+        <>
+          <Stats links={links} />
+
+          <LinkFilters
+            query={query}
+            onQueryChange={setQuery}
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
+            sortBy={sortBy}
+            onSortByChange={setSortBy}
+            total={links.length}
+            visible={visibleLinks.length}
+          />
+
+          <LinkList
+            links={visibleLinks}
+            hasAny={links.length > 0}
+            onEdit={openEdit}
+            onDelete={requestDelete}
+            onToggle={handleToggle}
+            onVisit={handleVisit}
+          />
+        </>
       )}
 
       {isEditorOpen && (
@@ -241,7 +235,8 @@ function App() {
             editingLink={editingLink}
             onCreate={handleCreate}
             onUpdate={handleUpdate}
-            onCancelEdit={closeEditor}
+            onCancel={closeEditor}
+            isAliasTaken={isAliasTaken}
           />
         </Modal>
       )}

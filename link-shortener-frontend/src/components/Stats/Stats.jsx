@@ -2,10 +2,6 @@ import { useMemo } from 'react'
 import { IconChart, IconCursor, IconEye, IconEyeOff, IconLink } from '../Icons/Icons'
 import styles from './Stats.module.css'
 
-// Панель статистики. Значения пересчитываются через useMemo только при
-// изменении списка ссылок (дополнительный побочный эффект, Часть 4).
-// Блок чисто информационный: без свечения и «подпрыгивания» при наведении,
-// чтобы не выглядеть как кнопки/ссылки.
 export function Stats({ links }) {
   const stats = useMemo(() => {
     const total = links.length
@@ -38,7 +34,12 @@ export function Stats({ links }) {
         <article key={card.key} className={styles.card}>
           <span className={styles.icon}>{card.icon}</span>
           <div className={styles.text}>
-            <span className={card.small ? styles.valueSmall : styles.value}>{card.value}</span>
+            <span
+              className={card.small ? styles.valueSmall : styles.value}
+              title={card.small ? String(card.value) : undefined}
+            >
+              {card.value}
+            </span>
             <span className={styles.label}>{card.label}</span>
           </div>
         </article>

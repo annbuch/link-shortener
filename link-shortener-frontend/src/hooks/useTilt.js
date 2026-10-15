@@ -1,7 +1,5 @@
 import { useCallback } from 'react'
 
-// 3D-наклон элемента за курсором. Возвращает обработчики, которые задают
-// CSS-переменные --tilt-x / --tilt-y (в градусах); сама трансформация — в CSS.
 export function useTilt(strength = 7) {
   const onMouseMove = useCallback(
     (event) => {

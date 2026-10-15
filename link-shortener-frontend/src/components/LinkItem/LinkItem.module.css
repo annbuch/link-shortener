@@ -38,7 +38,6 @@
   white-space: nowrap;
 }
 
-/* Неоновый «чип» статуса: свечение + подсветка текста. */
 .badge {
   flex: none;
   padding: 3px 11px;
@@ -86,7 +85,6 @@
   color: var(--primary);
 }
 
-/* Выключенная ссылка: переход недоступен — адрес показан как отключённый. */
 .shortUrlOff {
   color: var(--text-muted);
   text-decoration: line-through;
@@ -135,7 +133,6 @@
   color: var(--danger);
 }
 
-/* Иконочная ссылка (открыть оригинал) — визуально как иконочная кнопка. */
 .iconLink {
   display: inline-flex;
   align-items: center;
@@ -157,7 +154,6 @@
   text-decoration: none;
 }
 
-/* Для выключенной ссылки кнопка «открыть оригинал» неактивна. */
 .iconLinkOff {
   opacity: 0.45;
   cursor: not-allowed;

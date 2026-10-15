@@ -6,7 +6,6 @@ const SWATCH = {
   light: 'linear-gradient(135deg, #ffffff, #ff4dd2)',
 }
 
-// Переключатель визуальных тем (prototypes) в шапке приложения.
 export function ThemeSwitcher({ theme, onChange }) {
   return (
     <div className={styles.switcher} role="group" aria-label="Стиль интерфейса">
