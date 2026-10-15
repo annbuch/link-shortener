@@ -1,0 +1,209 @@
+/* ==========================================================================
+   Click.me — глобальные токены дизайна и темы.
+   Компонентные стили лежат рядом с компонентами (*.module.css) и используют
+   только эти переменные, поэтому переключение темы меняет весь интерфейс.
+   Переключение: атрибут data-theme на <html> (см. hooks/useTheme.js).
+
+   Оставлены две темы:
+   - "dark"  — тёмная неоновая (фиолетовый неон, свечение);
+   - "light" — светлая лавандово-фиолетовая: насыщенный сиреневый фон,
+     фиолетовые границы и неоновое свечение при наведении, тонированные
+     стеклянные поверхности (backdrop-blur).
+
+   Шрифты: Manrope (основной) + Space Grotesk (заголовки), подключены в index.html.
+   ========================================================================== */
+
+:root {
+  --font-sans: 'Manrope', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Space Grotesk', 'Manrope', system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  --transition: 160ms ease;
+  --bg-size: auto;
+  --hover-glow: none;
+  --primary-glow: none;
+  --title-glow: none;
+  --overlay: rgba(2, 8, 23, 0.6);
+}
+
+/* ========================================================================== */
+/*                    ТЁМНАЯ ТЕМА — фиолетовый неон (dark)                   */
+/* ========================================================================== */
+[data-theme='dark'] {
+  --bg: #04060a;
+  /* Крупные градиенты на весь экран — свечение по углам и снизу по центру. */
+  --bg-image: radial-gradient(1200px 820px at 12% -12%, color-mix(in srgb, var(--primary) 30%, transparent), transparent 62%),
+    radial-gradient(1100px 780px at 98% 2%, color-mix(in srgb, var(--primary-2) 26%, transparent), transparent 60%),
+        radial-gradient(800px 780px at 0% 98%, color-mix(in srgb, var(--primary-2) 10%, transparent), transparent 60%),
+    radial-gradient(1500px 1000px at 50% 125%, color-mix(in srgb, var(--primary) 18%, transparent), transparent 65%);
+  --bg-size: auto;
+  --primary: #cc40ff;
+  --primary-2: #ff4dd2;
+  --primary-3: #bb3bea;
+  --primary-contrast: #150a24;
+  --accent: #ff4dd2;
+  --surface: rgba(10, 16, 24, 0.8);
+  --surface-2: rgba(18, 30, 42, 0.72);
+  --surface-3: rgba(6, 12, 20, 0.72);
+  --panel: rgba(7, 12, 20, 0.94);
+  --border: color-mix(in srgb, var(--primary) 35%, transparent);
+  --border-width: 1px;
+  --radius: 10px;
+  --radius-sm: 6px;
+  --radius-lg: 14px;
+  --text: #dceef5;
+  --text-muted: #6f8f98;
+  --success: #39ff88;
+  --danger: #ff3b6b;
+  --danger-contrast: #2a0008;
+  --chip-bg: color-mix(in srgb, var(--primary) 13%, transparent);
+  --chip-text: color-mix(in srgb, var(--primary) 62%, white);
+  --badge-on-bg: color-mix(in srgb, var(--success) 18%, transparent);
+  --badge-on-text: var(--success);
+  --badge-off-bg: rgba(120, 150, 160, 0.14);
+  --badge-off-text: #7d97a0;
+  --shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 10%, transparent), 0 14px 30px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 0 30px color-mix(in srgb, var(--primary) 30%, transparent), 0 22px 55px rgba(0, 0, 0, 0.72);
+  --btn-shadow: none;
+  --glass-blur: blur(8px);
+  --ring: color-mix(in srgb, var(--primary) 60%, transparent);
+  --header-gradient: linear-gradient(135deg, var(--primary), var(--primary-2));
+  --hover-glow: 0 0 30px color-mix(in srgb, var(--primary) 42%, transparent);
+  --primary-glow: 0 0 20px color-mix(in srgb, var(--primary) 78%, transparent);
+  --title-color: color-mix(in srgb, var(--primary) 25%, white);
+  --title-bg: none;
+  --title-clip: border-box;
+  --title-glow: 0 0 10px color-mix(in srgb, var(--primary) 85%, transparent),
+    0 0 26px color-mix(in srgb, var(--primary-2) 55%, transparent);
+  --overlay: rgba(2, 8, 23, 0.66);
+}
+
+/* ========================================================================== */
+/*       СВЕТЛАЯ ТЕМА — насыщенная лаванда/фиолет + неон (light)              */
+/* ========================================================================== */
+[data-theme='light'] {
+  /* Насыщенный сиреневый фон — не белый и не тусклый. */
+  --bg: #c7bce9;
+  --bg-image: radial-gradient(1100px 780px at 10% -14%, color-mix(in srgb, var(--primary) 40%, transparent), transparent 62%),
+    radial-gradient(1000px 740px at 96% 0%, color-mix(in srgb, var(--primary-2) 30%, transparent), transparent 60%),
+    radial-gradient(1400px 900px at 50% 128%, color-mix(in srgb, var(--accent) 26%, transparent), transparent 66%);
+  --bg-size: auto;
+  /* Тонированные (лавандовые, не белые) стеклянные поверхности + backdrop-blur. */
+  --surface: rgba(224, 214, 250, 0.72);
+  --surface-2: rgba(233, 224, 253, 0.82);
+  --surface-3: rgba(218, 208, 248, 0.78);
+  --panel: rgba(238, 231, 253, 0.94);
+  /* Заметные фиолетовые границы — объекты не «сливаются» с фоном. */
+  --border: color-mix(in srgb, var(--primary) 44%, transparent);
+  --border-width: 1px;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --radius-lg: 22px;
+  /* Более контрастный, насыщенный текст. */
+  --text: #241a42;
+  --text-muted: #584a86;
+  --primary: #7c4dff;
+  --primary-2: #c026d3;
+  --primary-3: #6a2fe0;
+  --primary-contrast: #ffffff;
+  --accent: #a437e8;
+  --success: #0aa06a;
+  --danger: #e11d5e;
+  --danger-contrast: #ffffff;
+  --chip-bg: color-mix(in srgb, var(--primary) 20%, transparent);
+  --chip-text: color-mix(in srgb, var(--primary) 82%, #241a42);
+  --badge-on-bg: color-mix(in srgb, var(--success) 20%, transparent);
+  --badge-on-text: #068257;
+  --badge-off-bg: color-mix(in srgb, var(--primary) 16%, transparent);
+  --badge-off-text: #5b3f9e;
+  --shadow: 0 10px 28px rgba(92, 58, 170, 0.24), 0 0 0 1px color-mix(in srgb, var(--primary) 10%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  --shadow-lg: 0 22px 52px rgba(92, 58, 170, 0.32), 0 0 26px color-mix(in srgb, var(--primary) 24%, transparent);
+  --btn-shadow: none;
+  --glass-blur: blur(16px);
+  --ring: color-mix(in srgb, var(--primary) 55%, transparent);
+  --header-gradient: linear-gradient(135deg, var(--primary), var(--primary-2));
+  /* Неоновое фиолетовое свечение при наведении на карточки. */
+  --hover-glow: 0 14px 34px color-mix(in srgb, var(--primary) 46%, transparent),
+    0 0 26px color-mix(in srgb, var(--primary-2) 34%, transparent);
+  --primary-glow: 0 6px 18px color-mix(in srgb, var(--primary) 44%, transparent);
+  --title-color: #241a42;
+  --title-bg: none;
+  --title-clip: border-box;
+  --overlay: rgba(48, 36, 84, 0.42);
+}
+
+/* ========================================================================== */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  font-family: var(--font-sans);
+  font-weight: 400;
+  color: var(--text);
+  background-color: var(--bg);
+  background-image: var(--bg-image);
+  background-size: var(--bg-size);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+a {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+  border-radius: var(--radius-sm);
+}
+
+::selection {
+  background: var(--primary);
+  color: var(--primary-contrast);
+}
+
+/* Соответствие нативных контролов (select, скроллбар) теме */
+[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+[data-theme='light'] {
+  color-scheme: light;
+}

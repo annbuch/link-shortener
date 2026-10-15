@@ -1,0 +1,99 @@
+.select {
+  position: relative;
+  flex: none;
+}
+
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-width: 172px;
+  min-height: 44px;
+  padding: 10px 14px;
+  color: var(--text);
+  background: var(--surface);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-sm);
+  backdrop-filter: var(--glass-blur);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.trigger:hover {
+  border-color: color-mix(in srgb, var(--primary) 55%, var(--border));
+}
+
+.triggerOpen {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.chevron {
+  flex: none;
+  color: var(--text-muted);
+  transition: transform var(--transition), color var(--transition);
+}
+
+.triggerOpen .chevron {
+  transform: rotate(180deg);
+  color: var(--primary);
+}
+
+.menu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 100%;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  background: var(--panel);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: var(--glass-blur);
+  animation: drop 130ms ease;
+}
+
+.item {
+  display: block;
+  width: 100%;
+  padding: 9px 12px;
+  color: var(--text);
+  background: transparent;
+  border: none;
+  border-radius: calc(var(--radius-sm) - 3px);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+}
+
+.item:hover {
+  background: var(--surface-2);
+  color: var(--primary);
+}
+
+.itemActive {
+  color: var(--primary);
+  background: var(--chip-bg);
+  font-weight: 600;
+}
+
+@keyframes drop {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}

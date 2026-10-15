@@ -1,0 +1,170 @@
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  background: var(--surface);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  backdrop-filter: var(--glass-blur);
+  transform: perspective(900px) translateY(var(--lift, 0)) rotateX(var(--tilt-x, 0deg))
+    rotateY(var(--tilt-y, 0deg));
+  transform-style: preserve-3d;
+  transition: transform 200ms ease, box-shadow var(--transition), border-color var(--transition);
+}
+
+.item:hover {
+  --lift: -3px;
+  border-color: color-mix(in srgb, var(--primary) 55%, var(--border));
+  box-shadow: var(--shadow-lg), var(--hover-glow);
+}
+
+.off {
+  opacity: 0.62;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.label {
+  font-size: 1.05rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Неоновый «чип» статуса: свечение + подсветка текста. */
+.badge {
+  flex: none;
+  padding: 3px 11px;
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  transition: box-shadow var(--transition);
+}
+
+.badgeOn {
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 15%, transparent);
+  border-color: color-mix(in srgb, var(--success) 55%, transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--success) 45%, transparent),
+    inset 0 0 8px color-mix(in srgb, var(--success) 22%, transparent);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--success) 75%, transparent);
+}
+
+.badgeOff {
+  color: var(--badge-off-text);
+  background: color-mix(in srgb, var(--badge-off-text) 14%, transparent);
+  border-color: color-mix(in srgb, var(--badge-off-text) 45%, transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--badge-off-text) 35%, transparent);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--badge-off-text) 60%, transparent);
+}
+
+.short {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.shortUrl {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--primary);
+}
+
+/* Выключенная ссылка: переход недоступен — адрес показан как отключённый. */
+.shortUrlOff {
+  color: var(--text-muted);
+  text-decoration: line-through;
+  cursor: not-allowed;
+}
+
+.original {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.clicks {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--success);
+  font-weight: 600;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+  padding-top: 12px;
+  border-top: var(--border-width) solid var(--border);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.delete {
+  color: var(--danger);
+}
+
+/* Иконочная ссылка (открыть оригинал) — визуально как иконочная кнопка. */
+.iconLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  color: var(--text);
+  background: var(--surface-2);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--btn-shadow);
+  transition: transform var(--transition), border-color var(--transition), color var(--transition);
+}
+
+.iconLink:hover {
+  transform: translateY(-1px);
+  border-color: var(--primary);
+  color: var(--primary);
+  text-decoration: none;
+}
+
+/* Для выключенной ссылки кнопка «открыть оригинал» неактивна. */
+.iconLinkOff {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.iconLinkOff:hover {
+  transform: none;
+  border-color: var(--border);
+  color: var(--text);
+}
