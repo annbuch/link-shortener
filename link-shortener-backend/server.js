@@ -1,5 +1,6 @@
 require('dotenv').config();
 const express = require('express');
+const cors = require('cors');
 const { sequelize } = require('./models');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
@@ -17,6 +18,10 @@ const swaggerSpec = require('./swagger');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  credentials: true
+}));
 app.use(express.json());
 
 app.use('/auth', authRoutes);
@@ -25,6 +30,14 @@ app.use('/profile', profileRoutes);
 app.use('/links', linkRoutes);
 app.use('/groups', groupRoutes);
 app.use('/analytics', analyticsRoutes);
+
+// API prefix for lab5
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/profile', profileRoutes);
+app.use('/api/links', linkRoutes);
+app.use('/api/groups', groupRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
   explorer: true,

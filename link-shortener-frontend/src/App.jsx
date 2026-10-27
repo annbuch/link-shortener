@@ -1,10 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import styles from './App.module.css'
-import { useStoredList } from './hooks/useStoredList'
 import { useDebounce } from './hooks/useDebounce'
 import { useTheme } from './hooks/useTheme'
-import { seedLinks } from './data/seedLinks'
-import { generateShortCode, getLinkCode } from './utils/shortCode'
+import { getLinkCode } from './utils/shortCode'
 import { pluralize } from './utils/plural'
 import { Button } from './components/Button/Button'
 import { LinkForm } from './components/LinkForm/LinkForm'
@@ -15,10 +13,9 @@ import { Stats } from './components/Stats/Stats'
 import { ThemeSwitcher } from './components/ThemeSwitcher/ThemeSwitcher'
 import { UndoToast } from './components/UndoToast/UndoToast'
 import { IconAlert, IconLink, IconPlus } from './components/Icons/Icons'
-
-const STORAGE_KEY = 'clickme.links.v1'
-const AUTOSAVE_KEY = 'clickme.links.autosave'
-const LOAD_DELAY = 1000
+import { useAuth } from './context/AuthContext'
+import { AuthPage } from './components/Auth/AuthPage'
+import * as linksApi from './api/links'
 
 const createId = () =>
   typeof crypto !== 'undefined' && crypto.randomUUID
@@ -27,8 +24,11 @@ const createId = () =>
 
 function App() {
   const [theme, setTheme] = useTheme()
+  const { user, isAuthenticated, loading: authLoading, logout } = useAuth()
 
-  const [links, setLinks, loading] = useStoredList(STORAGE_KEY, seedLinks, LOAD_DELAY)
+  const [links, setLinks] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -48,129 +48,18 @@ function App() {
   }, [links.length, loading])
 
   const debouncedLinks = useDebounce(loading ? null : links, 500)
-  useEffect(() => {
-    if (debouncedLinks === null) return
-    window.localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(debouncedLinks))
-  }, [debouncedLinks])
-
-  useEffect(() => {
-    if (!lastDeleted) return undefined
-    const timer = setTimeout(() => setLastDeleted(null), 6000)
-    return () => clearTimeout(timer)
-  }, [lastDeleted])
-
-  const visibleLinks = useMemo(() => {
-    const normalized = query.trim().toLowerCase()
-    let result = links
-
-    if (normalized) {
-      result = result.filter(
-        (link) =>
-          link.label.toLowerCase().includes(normalized) ||
-          link.originalUrl.toLowerCase().includes(normalized) ||
-          getLinkCode(link).toLowerCase().includes(normalized),
-      )
-    }
-
-    if (statusFilter === 'active') {
-      result = result.filter((link) => link.isActive)
-    } else if (statusFilter === 'inactive') {
-      result = result.filter((link) => !link.isActive)
-    }
-
-    const sorted = [...result]
-    switch (sortBy) {
-      case 'oldest':
-        sorted.sort((a, b) => a.createdAt - b.createdAt)
-        break
-      case 'clicks':
-        sorted.sort((a, b) => b.clicks - a.clicks)
-        break
-      case 'label':
-        sorted.sort((a, b) => a.label.localeCompare(b.label, 'ru'))
-        break
-      default:
-        sorted.sort((a, b) => b.createdAt - a.createdAt)
-    }
-    return sorted
-  }, [links, query, statusFilter, sortBy])
-
-  const openCreate = () => {
-    setEditingId(null)
-    setEditorOpen(true)
-  }
-
-  const openEdit = (id) => {
-    setEditingId(id)
-    setEditorOpen(true)
-  }
-
-  const closeEditor = () => {
-    setEditorOpen(false)
-    setEditingId(null)
-  }
-
-  const isAliasTaken = (alias, exceptId) =>
-    links.some(
-      (link) => link.id !== exceptId && getLinkCode(link).toLowerCase() === alias.toLowerCase(),
-    )
-
-  const handleCreate = (values) => {
-    const newLink = {
-      id: createId(),
-      ...values,
-      shortCode: generateShortCode(),
-      clicks: 0,
-      isActive: true,
-      createdAt: Date.now(),
-    }
-    setLinks((prev) => [newLink, ...prev])
-    closeEditor()
-  }
-
-  const handleUpdate = (id, values) => {
-    setLinks((prev) => prev.map((link) => (link.id === id ? { ...link, ...values } : link)))
-    closeEditor()
-  }
-
-  const requestDelete = (id) => {
-    setPendingDelete(links.find((link) => link.id === id) || null)
-  }
-
-  const cancelDelete = () => {
-    setPendingDelete(null)
-  }
-
-  const confirmDelete = () => {
-    if (!pendingDelete) return
-    const index = links.findIndex((link) => link.id === pendingDelete.id)
-    setLinks((prev) => prev.filter((link) => link.id !== pendingDelete.id))
-    setLastDeleted({ link: pendingDelete, index })
-    setPendingDelete(null)
-  }
-
-  const undoDelete = () => {
-    if (!lastDeleted) return
-    setLinks((prev) => {
-      const next = [...prev]
-      const at =
-        lastDeleted.index >= 0 && lastDeleted.index <= next.length ? lastDeleted.index : 0
-      next.splice(at, 0, lastDeleted.link)
-      return next
-    })
-    setLastDeleted(null)
-  }
-
-  const handleToggle = (id) => {
-    setLinks((prev) =>
-      prev.map((link) => (link.id === id ? { ...link, isActive: !link.isActive } : link)),
+  useEffect(() => { n    if (!lastDeleted) return undefined n    const timer = setTimeout(() => setLastDeleted(null), 6000) n    if (authLoading) { n    return ( n      <div className={styles.app}> n        <div className={styles.loading}> n          <div className={styles.spinner} /> n        </div> n      </div> n    ) n  } n n  if (!isAuthenticated) { n    return <AuthPage /> n  } n n  return () => clearTimeout(timer) n  }, [lastDeleted]) n n  if (authLoading) {
+    return (
+      <div className={styles.app}>
+        <div className={styles.loading}>
+          <div className={styles.spinner} />
+        </div>
+      </div>
     )
   }
 
-  const handleVisit = (id) => {
-    setLinks((prev) =>
-      prev.map((link) => (link.id === id ? { ...link, clicks: link.clicks + 1 } : link)),
-    )
+  if (!isAuthenticated) {
+    return <AuthPage />
   }
 
   return (
@@ -182,15 +71,17 @@ function App() {
           </span>
           <div className={styles.brandText}>
             <h1 className={styles.title}>Click.me</h1>
-            <span className={styles.subtitle}>Сервис для сокращения ссылок с аналитикой переходов</span>
+            <span className={styles.subtitle}>Сервис сокращения ссылок с аналитикой</span>
           </div>
         </div>
 
         <div className={styles.tools}>
+          <span style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>{user?.email || ''}</span>
           <ThemeSwitcher theme={theme} onChange={setTheme} />
+          <Button onClick={logout}>Выйти</Button>
           <Button variant="primary" onClick={openCreate} disabled={loading}>
             <IconPlus width={18} height={18} />
-            Новая ссылка
+            Добавить ссылку
           </Button>
         </div>
       </header>
