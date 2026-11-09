@@ -15,8 +15,7 @@ export function AuthProvider({ children }) {
         try {
           const res = await authApi.getProfile();
           setUser(res.data);
-        } catch (e) {
-          // try refresh if possible
+        } catch {
           if (refreshToken) {
             try {
               const r = await authApi.refresh(refreshToken);
@@ -32,7 +31,7 @@ export function AuthProvider({ children }) {
               }
               const res = await authApi.getProfile();
               setUser(res.data);
-            } catch (err) {
+            } catch {
               localStorage.removeItem('token');
               localStorage.removeItem('refreshToken');
               setToken(null);
@@ -49,6 +48,8 @@ export function AuthProvider({ children }) {
       setLoading(false);
     };
     init();
+    // Инициализация сессии выполняется один раз при монтировании провайдера
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const login = async (email, password) => {

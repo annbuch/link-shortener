@@ -8,7 +8,7 @@ const generateShortCode = () => Math.random().toString(36).substring(2, 8);
  * @openapi
  * /links:
  *   get:
- *     summary: Получить все ссылки пользователя
+ *     summary: Получить список ссылок пользователя
  *     tags: [Links]
  *     security:
  *       - bearerAuth: []
@@ -17,44 +17,65 @@ const generateShortCode = () => Math.random().toString(36).substring(2, 8);
  *         name: groupId
  *         schema:
  *           type: integer
- *         description: Фильтр по группе
  *       - in: query
  *         name: search
  *         schema:
  *           type: string
- *         description: Поиск по оригинальному URL или алиасу
  *       - in: query
  *         name: sort
  *         schema:
  *           type: string
  *           enum: [createdAt, clicks, originalUrl]
- *         description: Поле для сортировки
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
  *     responses:
  *       200:
  *         description: Список ссылок
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Link'
  *       401:
- *         description: Требуется авторизация
+ *         description: Неавторизован
  */
 exports.getAllLinks = async (req, res, next) => {
   try {
-    const { groupId, search, sort } = req.query;
+    const { groupId, search, sort, page, limit } = req.query;
     const where = { userId: req.user.id, deletedAt: null };
     if (groupId) where.groupId = Number(groupId);
     if (search) {
       where[Op.or] = [
-        { originalUrl: { [Op.iLike]: `%${search}%` } },
-        { alias: { [Op.iLike]: `%${search}%` } }
+        { originalUrl: { [Op.iLike]: '%' + search + '%' } },
+        { alias: { [Op.iLike]: '%' + search + '%' } }
       ];
     }
     const order = sort ? [[sort, 'DESC']] : [['createdAt', 'DESC']];
-    const links = await Link.findAll({ where, order });
-    res.json(links);
+
+    // Без параметров page/limit сохраняем прежний формат ответа (простой массив)
+    if (page === undefined && limit === undefined) {
+      const links = await Link.findAll({ where, order });
+      return res.json(links);
+    }
+
+    const pageNum = Math.max(1, parseInt(page) || 1);
+    const limitNum = Math.max(1, Math.min(100, parseInt(limit) || 10));
+    const offset = (pageNum - 1) * limitNum;
+
+    const { rows: links, count } = await Link.findAndCountAll({
+      where,
+      order,
+      limit: limitNum,
+      offset
+    });
+
+    res.json({
+      items: links,
+      total: count,
+      page: pageNum,
+      limit: limitNum
+    });
   } catch (err) {
     next(err);
   }

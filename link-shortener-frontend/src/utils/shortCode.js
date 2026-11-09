@@ -12,6 +12,12 @@ export function getLinkCode(link) {
   return link.alias && link.alias.trim() ? link.alias.trim() : link.shortCode
 }
 
+const API_BASE = (import.meta.env.VITE_API_BASE || 'http://localhost:3000').replace(/\/+$/, '')
+
 export function buildShortUrl(link) {
-  return `clk.me/${getLinkCode(link)}`
+  return `${API_BASE.replace(/^https?:\/\//, '')}/${getLinkCode(link)}`
+}
+
+export function buildShortUrlAbsolute(link) {
+  return `${API_BASE}/${getLinkCode(link)}`
 }

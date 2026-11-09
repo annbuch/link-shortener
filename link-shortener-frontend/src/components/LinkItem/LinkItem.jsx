@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { buildShortUrl } from '../../utils/shortCode'
+import { buildShortUrl, buildShortUrlAbsolute } from '../../utils/shortCode'
 import { pluralize } from '../../utils/plural'
 import { useTilt } from '../../hooks/useTilt'
 import { Button } from '../Button/Button'
@@ -25,6 +25,7 @@ export function LinkItem({ link, onEdit, onDelete, onToggle, onVisit }) {
   const [copied, setCopied] = useState(false)
   const tilt = useTilt()
   const shortUrl = buildShortUrl(link)
+  const shortUrlHref = buildShortUrlAbsolute(link)
   const active = link.isActive
 
   useEffect(() => {
@@ -35,7 +36,7 @@ export function LinkItem({ link, onEdit, onDelete, onToggle, onVisit }) {
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(`https://${shortUrl}`)
+      await navigator.clipboard.writeText(shortUrlHref)
       setCopied(true)
     } catch (error) {
       console.warn('Не удалось скопировать ссылку:', error)
@@ -64,7 +65,7 @@ export function LinkItem({ link, onEdit, onDelete, onToggle, onVisit }) {
         {active ? (
           <a
             className={styles.shortUrl}
-            href={link.originalUrl}
+            href={shortUrlHref}
             target="_blank"
             rel="noreferrer"
             onClick={() => onVisit(link.id)}

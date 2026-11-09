@@ -14,10 +14,11 @@ const isValidUrl = (value) => {
   }
 }
 
-export function LinkForm({ editingLink, onCreate, onUpdate, onCancel, isAliasTaken }) {
-  const [label, setLabel] = useState(editingLink ? editingLink.label : '')
-  const [originalUrl, setOriginalUrl] = useState(editingLink ? editingLink.originalUrl : '')
-  const [alias, setAlias] = useState(editingLink && editingLink.alias ? editingLink.alias : '')
+export function LinkForm({ editingLink, initialValues, onCreate, onUpdate, onCancel, isAliasTaken }) {
+  const startValues = initialValues || editingLink || {}
+  const [label, setLabel] = useState(startValues.label || '')
+  const [originalUrl, setOriginalUrl] = useState(startValues.originalUrl || '')
+  const [alias, setAlias] = useState(startValues.alias || '')
   const [error, setError] = useState('')
 
   const urlRef = useRef(null)
@@ -47,7 +48,7 @@ export function LinkForm({ editingLink, onCreate, onUpdate, onCancel, isAliasTak
       return fail('Алиас: до 30 символов — латиница, цифры, «-» и «_»', aliasRef)
     }
     if (cleanAlias && isAliasTaken(cleanAlias, editingLink?.id)) {
-      return fail(`Адрес clk.me/${cleanAlias} уже занят другой ссылкой`, aliasRef)
+      return fail(`Адрес /${cleanAlias} уже занят другой ссылкой`, aliasRef)
     }
 
     const values = {
